@@ -41,7 +41,8 @@ class Pytwradio:
         fp = None
         if output_file :
             fp = open(output_file,"w")
-        print >>sys.stderr,"Caturing %s: " % self.radio_dict[self.id],
+        print >>sys.stderr,"Caturing \"%s\": " % self.radio_dict[self.id],
+        if not fp: print ''
 
         pass_music_url = ''
         while t==-1 or t >= 0 :
@@ -69,18 +70,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""
         Steaming for Taiwan Radio
     """)
-    parser.add_argument("output_file", default = '')
+    parser.add_argument("-o", "--output", default = '')
     parser.add_argument("-t", "--time", metavar='t', type=int, default = 10, help='How long do you want to capture.')
     parser.add_argument("--id", help='See radio_id by --list')
     parser.add_argument("--list",action='store_true', help='show list of radio_id')
     args = parser.parse_args()
 
-    if args.list:
+    if args.list or args.id==None:
         print 'id\tname'
         for key,value in sorted(Pytwradio.get_list().items(), key=lambda d:int(d[0])):
             print u'%s\t%s' %(key, value)
         exit()
 
     radio = Pytwradio(args.id)
-    radio.capture(t=args.time, output_file=args.output_file)
+    radio.capture(t=args.time, output_file=args.output)
 

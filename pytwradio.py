@@ -30,6 +30,7 @@ class Pytwradio(object):
         self.radio_dict = self.get_list()
         self.base_url = ''
         self.auth_url = ''
+        self.auth()
 
     def auth(self):
         req = urllib2.Request(url='http://hichannel.hinet.net/player.do?id=%s&type=playradio' %self.id)

@@ -8,6 +8,7 @@ import argparse
 import time
 import urllib2
 import re
+import subprocess as sp
 
 class Pytwradio(object):
     """
@@ -45,7 +46,7 @@ class Pytwradio(object):
         else:
             raise Exception("ID not found.")
 
-    def capture(self, t, output_file=''):
+    def capture(self, t, output_file=None, show_link=False):
         fp = None
         if output_file:
             fp = open(output_file, "w")
@@ -53,6 +54,7 @@ class Pytwradio(object):
         if not fp: print ''
 
         pass_music_url = ''
+        data = '' 
         while t == -1 or t >= 0:
             try:
                 urlobj = urllib2.urlopen(self.auth_url)
@@ -63,27 +65,37 @@ class Pytwradio(object):
                 self.auth()
                 continue
             if music_url != pass_music_url:
+                urlobj = urllib2.urlopen(music_url)
+                buf = urlobj.read()
+                data += buf
+
                 if fp:
-                    urlobj = urllib2.urlopen(music_url)
-                    fp.write(urlobj.read())
-                    sys.stdout.write('.')
-                    sys.stdout.flush()
-                else:
+                    fp.write(buf)
+                sys.stderr.write('.')
+                sys.stderr.flush()
+                if show_link:
                     print music_url
                 if t != -1:
                     t -= 10
                     if t < 0: break
                 pass_music_url = music_url
             time.sleep(5)
+        if fp: fp.close()
         print ''
+        return data 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steaming for Taiwan Radio")
-    parser.add_argument("-o", "--output", default='')
+    parser.add_argument("-o", "--output", default=None)
     parser.add_argument("-t", "--time", metavar='t', type=int, default=10, help='How long do you want to capture.')
     parser.add_argument("--id", help='See radio_id by --list')
     parser.add_argument("--list", action='store_true', help='show list of radio_id')
+    parser.add_argument("--play", action='store_true', help='play after capture')
     args = parser.parse_args()
+
+    if len(sys.argv) < 2:
+        parser.print_help()
+        exit()
 
     if args.list or args.id is None:
         print 'id\tname'
@@ -92,5 +104,11 @@ if __name__ == "__main__":
         exit()
 
     radio = Pytwradio(args.id)
-    radio.capture(t=args.time, output_file=args.output)
+
+    data = radio.capture(t=args.time, output_file=args.output, show_link=False)
+
+    if args.play:
+        pipe = sp.Popen(["ffplay","-"], stdin=sp.PIPE, stdout=sp.PIPE,  stderr=sp.PIPE)
+        pipe.stdin.write(data)
+        pipe.terminate()
 

@@ -47,41 +47,49 @@ class Pytwradio(object):
         else:
             raise Exception("ID not found.")
 
-    def capture(self, t, output_file=None, DEBUG=False):
+
+    def capture_nonblocking(self, t, output_file=None, DEBUG=False):
         fp = None
-        if output_file:
-            fp = open(output_file, "w")
+        if output_file: fp = open(output_file, "w")
 
-        if DEBUG:
-            print >>sys.stderr, "Caturing \"%s\": " % self.radio_dict[self.id]
+        if DEBUG: print >>sys.stderr, "Caturing \"%s\": " % self.radio_dict[self.id]
 
-        pass_music_url = ''
-        data = '' 
+        past_music_url = ''
         while t == -1 or t >= 0:
+            ## Get data url
             try:
                 urlobj = urllib2.urlopen(self.auth_url)
                 content = urlobj.read()
                 music_url = self.base_url + content.split('\n')[6]
             except Exception, e:
                 print >>sys.stderr, e
+                print self.auth_url
                 self.auth()
                 continue
-            if music_url != pass_music_url:
+
+            if music_url != past_music_url:
+                # Capture data
                 urlobj = urllib2.urlopen(music_url)
                 buf = urlobj.read()
-                data += buf
 
-                if fp:
-                    fp.write(buf)
-                if DEBUG:
-                    print >>sys.stderr, music_url
+                # Output to screen/file/iterator
+                if DEBUG: print >>sys.stderr, music_url
+                if fp: fp.write(buf)
+                yield buf
+
                 if t != -1:
                     t -= 10
                     if t < 0: break
-                pass_music_url = music_url
-            time.sleep(5)
+                past_music_url = music_url
+            time.sleep(2)
         if fp: fp.close()
-        return data 
+
+    def capture_blocking(self, t, output_file=None, DEBUG=False):
+        data = ''
+        for dat in self.capture_nonblocking(t, output_file, DEBUG): data += dat
+        return data
+    capture = capture_blocking
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steaming for Taiwan Radio")
@@ -89,7 +97,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--time", metavar='t', type=int, default=10, help='How long do you want to capture.')
     parser.add_argument("--id", help='See radio_id by --list')
     parser.add_argument("--list", action='store_true', help='show list of radio_id')
-    parser.add_argument("--play", action='store_true', help='play after capture')
+    parser.add_argument("--play", action='store_true', help='capture with playing radio')
     args = parser.parse_args()
 
     if len(sys.argv) < 2:
@@ -104,10 +112,13 @@ if __name__ == "__main__":
 
     radio = Pytwradio(args.id)
 
-    data = radio.capture(t=args.time, output_file=args.output, DEBUG=True)
-
     if args.play:
-        pipe = sp.Popen(["ffplay","-"], stdin=sp.PIPE, stdout=sp.PIPE,  stderr=sp.PIPE)
-        pipe.stdin.write(data)
+        pipe = sp.Popen(["ffplay","-"], stdin=sp.PIPE, stdout=sp.PIPE,  stderr=sp.PIPE, bufsize=0)
+        t = 0
+        for dat in radio.capture_nonblocking(t=args.time, output_file=args.output, DEBUG=True):
+            pipe.stdin.write(dat)
         pipe.terminate()
+    else:
+        data = radio.capture(t=args.time, output_file=args.output, DEBUG=True)
+
 

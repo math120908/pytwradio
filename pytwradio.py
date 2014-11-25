@@ -46,12 +46,13 @@ class Pytwradio(object):
         else:
             raise Exception("ID not found.")
 
-    def capture(self, t, output_file=None, show_link=False):
+    def capture(self, t, output_file=None, DEBUG=False):
         fp = None
         if output_file:
             fp = open(output_file, "w")
-        print >>sys.stderr, "Caturing \"%s\": " % self.radio_dict[self.id],
-        if not fp: print ''
+
+        if DEBUG:
+            print >>sys.stderr, "Caturing \"%s\": " % self.radio_dict[self.id]
 
         pass_music_url = ''
         data = '' 
@@ -61,7 +62,7 @@ class Pytwradio(object):
                 content = urlobj.read()
                 music_url = self.base_url + content.split('\n')[6]
             except Exception, e:
-                print e
+                print >>sys.stderr, e
                 self.auth()
                 continue
             if music_url != pass_music_url:
@@ -71,17 +72,14 @@ class Pytwradio(object):
 
                 if fp:
                     fp.write(buf)
-                sys.stderr.write('.')
-                sys.stderr.flush()
-                if show_link:
-                    print music_url
+                if DEBUG:
+                    print >>sys.stderr, music_url
                 if t != -1:
                     t -= 10
                     if t < 0: break
                 pass_music_url = music_url
             time.sleep(5)
         if fp: fp.close()
-        print ''
         return data 
 
 if __name__ == "__main__":
@@ -105,7 +103,7 @@ if __name__ == "__main__":
 
     radio = Pytwradio(args.id)
 
-    data = radio.capture(t=args.time, output_file=args.output, show_link=False)
+    data = radio.capture(t=args.time, output_file=args.output, DEBUG=True)
 
     if args.play:
         pipe = sp.Popen(["ffplay","-"], stdin=sp.PIPE, stdout=sp.PIPE,  stderr=sp.PIPE)

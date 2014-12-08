@@ -9,6 +9,19 @@ import time
 import urllib2
 import re
 import subprocess as sp
+import socket
+
+def urlopen_with_retry(req, ntries=5):
+    for _ in range(ntries):
+        try:
+            page = urllib2.urlopen(req)
+            break # success
+        except urllib2.URLError as err:
+            if not isinstance(err.reason, socket.timeout):
+               raise # propagate non-timeout errors
+    else: # all ntries failed 
+        raise err # re-raise the last timeout error
+    return page 
 
 class Pytwradio(object):
     """
@@ -16,7 +29,7 @@ class Pytwradio(object):
     """
     @classmethod
     def get_list(cls):
-        urlobj = urllib2.urlopen('http://hichannel.hinet.net/ajax/radio/xml.do')
+        urlobj = urlopen_with_retry('http://hichannel.hinet.net/ajax/radio/xml.do')
         content = urlobj.read()
         radiolist = re.findall('listname="([^\"]*)".*md_id="([^\"]*)"', content)
         radio_dict = {}
@@ -35,13 +48,13 @@ class Pytwradio(object):
     def auth(self):
         req = urllib2.Request(url='http://hichannel.hinet.net/player.do?id=%s&type=playradio' %self.id)
         req.add_header('Referer', 'http://hichannel.hinet.net/radio.do?id=%s' %self.id)
-        urlobj = urllib2.urlopen(req)
+        urlobj = urlopen_with_retry(req)
         content = urlobj.read()
         urls = re.findall("http://radio-hichannel.cdn.hinet.net/live[^\"]*", content)
         if urls:
             url = urls[0]
             self.base_url = re.findall('.*/', url)[0]
-            urlobj = urllib2.urlopen(url)
+            urlobj = urlopen_with_retry(url)
             content = urlobj.read()
             self.auth_url = self.base_url + content.split()[3]
         else:
@@ -58,7 +71,7 @@ class Pytwradio(object):
         while t == -1 or t >= 0:
             ## Get data url
             try:
-                urlobj = urllib2.urlopen(self.auth_url)
+                urlobj = urlopen_with_retry(self.auth_url)
                 content = urlobj.read()
                 music_url = self.base_url + content.split('\n')[6]
             except Exception, e:
@@ -69,7 +82,7 @@ class Pytwradio(object):
 
             if music_url != past_music_url:
                 # Capture data
-                urlobj = urllib2.urlopen(music_url)
+                urlobj = urlopen_with_retry(music_url)
                 buf = urlobj.read()
 
                 # Output to screen/file/iterator

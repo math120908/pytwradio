@@ -33,7 +33,6 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
     :type logger: logging.Logger instance
     """
     def deco_retry(f):
-
         @wraps(f)
         def f_retry(*args, **kwargs):
             mtries, mdelay = tries, delay
@@ -50,9 +49,7 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
                     mtries -= 1
                     mdelay *= backoff
             return f(*args, **kwargs)
-
         return f_retry  # true decorator
-
     return deco_retry
 
 @retry(urllib2.URLError, tries=5, delay=0, backoff=0)
@@ -81,6 +78,7 @@ class Pytwradio(object):
         self.auth_url = ''
         self.auth()
 
+    @retry(urllib2.URLError, tries=5, delay=1, backoff=1)
     def auth(self):
         req = urllib2.Request(url='http://hichannel.hinet.net/player.do?id=%s&type=playradio' %self.id)
         req.add_header('Referer', 'http://hichannel.hinet.net/radio.do?id=%s' %self.id)
@@ -94,7 +92,7 @@ class Pytwradio(object):
             content = urlobj.read()
             self.auth_url = self.base_url + content.split()[3]
         else:
-            raise Exception("ID not found.")
+            raise urllib2.URLError("ID not found or temporary error")
 
 
     def capture_nonblocking(self, t, output_file=None, DEBUG=False):

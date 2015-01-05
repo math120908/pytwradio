@@ -5,13 +5,13 @@ import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
 import argparse
+import tempfile
 import time
-import urllib2
 import re
-import subprocess as sp
+import urllib2
 import socket
-import time
 import json
+import subprocess as sp
 from functools import wraps
 
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
@@ -78,6 +78,30 @@ class Pytwradio(object):
                 pN = pN+1
         return radio_dict
 
+    @classmethod
+    def ts2wav(cls, tsdata):
+        """ Convert from ts to wav """
+        import scipy.io.wavfile
+        tmpfile = tempfile.NamedTemporaryFile(suffix='.wav', delete=True)
+        pipe = sp.Popen(["ffmpeg","-y","-v","fatal","-i","-",tmpfile.name],
+                    stdin=sp.PIPE, stdout=sp.PIPE,  stderr=sp.PIPE, bufsize=0)
+        stdout_data = pipe.communicate(input=tsdata)[0]
+        #fs, wavdata = scipy.io.wavfile.read(tmpfile.name)
+        with open(tmpfile.name,'rb') as f: wavdata = f.read()
+        tmpfile.close()
+        return wavdata
+
+    @classmethod
+    def ts2mp3(cls, tsdata):
+        """ Convert from ts to mp3 """
+        tmpfile = tempfile.NamedTemporaryFile(suffix='.mp3', delete=True)
+        pipe = sp.Popen(["ffmpeg","-y","-v","fatal","-i","-",tmpfile.name],
+                    stdin=sp.PIPE, stdout=sp.PIPE,  stderr=sp.PIPE, bufsize=0)
+        stdout_data = pipe.communicate(input=tsdata)[0]
+        with open(tmpfile.name,'rb') as f: mp3data = f.read()
+        tmpfile.close()
+        return mp3data
+
     def __init__(self, _id):
         self.id = str(_id)
         self.auth()
@@ -142,7 +166,6 @@ class Pytwradio(object):
         for dat in self.capture_nonblocking(t, output_file, DEBUG): data += dat
         return data
     capture = capture_blocking
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steaming for Taiwan Radio")

@@ -88,20 +88,18 @@ class Pytwradio(object):
 
     @retry(urllib2.URLError, tries=5, delay=1, backoff=1)
     def auth(self):
-        req = urllib2.Request(url='http://hichannel.hinet.net/player.do?id=%s&type=playradio' %self.id)
-        req.add_header('Referer', 'http://hichannel.hinet.net/radio.do?id=%s' %self.id)
+        req = urllib2.Request(url='http://hichannel.hinet.net/radio/index.do?id={0}'.format(self.id))
         urlobj = urlopen_with_retry(req)
         content = urlobj.read()
-        urls = re.findall("http://radio-hichannel.cdn.hinet.net/live[^\"]*", content)
+        urls = re.findall("http:.*radio-hichannel.cdn.hinet.net[^']*", content)
         if urls:
-            url = urls[0]
+            url = urls[0].replace('\\','')
             self.base_url = re.findall('.*/', url)[0]
             urlobj = urlopen_with_retry(url)
             content = urlobj.read()
             self.auth_url = self.base_url + content.split()[3]
         else:
             raise urllib2.URLError("ID not found or temporary error")
-
 
     def capture_nonblocking(self, t, output_file=None, DEBUG=False):
         fp = None

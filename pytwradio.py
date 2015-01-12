@@ -5,12 +5,13 @@ import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
 import argparse
+import datetime
+import json
+import re
+import socket
 import tempfile
 import time
-import re
 import urllib2
-import socket
-import json
 import subprocess as sp
 from functools import wraps
 
@@ -124,6 +125,24 @@ class Pytwradio(object):
             self.auth_url = self.base_url + content.split()[3]
         else:
             raise urllib2.URLError("ID not found or temporary error")
+
+    def get_program_list(self, date=datetime.date.today()):
+        urlobj = urlopen_with_retry( 'http://hichannel.hinet.net/radio/getProgramList.do?channelId={0}&date={1:%Y%m%d}'.format(self.id, date) )
+        content = urlobj.read()
+        jsonobj = json.loads(content)
+        programlist = []
+        for program in jsonobj[u'list']:
+            st = program[u'start_time'].encode('UTF8')
+            ed = program[u'end_time'].encode('UTF8')
+            if ed == "24:00":
+                ed = "23:59"
+            programlist.append( 
+                    {'start_time': datetime.datetime.strptime(
+                                    "{0:%Y%m%d} {1}".format(date,st),"%Y%m%d %H:%M"),
+                       'end_time': datetime.datetime.strptime(
+                                    "{0:%Y%m%d} {1}".format(date,ed),"%Y%m%d %H:%M"),
+                           'name': program[u'name'].encode('UTF8')} )
+        return programlist
 
     def capture_nonblocking(self, t, output_file=None, DEBUG=False):
         fp = None

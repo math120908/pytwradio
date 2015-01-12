@@ -11,6 +11,7 @@ import re
 import subprocess as sp
 import socket
 import time
+import json
 from functools import wraps
 
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
@@ -62,12 +63,19 @@ class Pytwradio(object):
     """
     @classmethod
     def get_list(cls):
-        urlobj = urlopen_with_retry('http://hichannel.hinet.net/ajax/radio/xml.do')
-        content = urlobj.read()
-        radiolist = re.findall('listname="([^\"]*)".*md_id="([^\"]*)"', content)
         radio_dict = {}
-        for name, _id in radiolist:
-            radio_dict[_id] = name.decode('utf8')
+        pN = 1
+        while True:
+            urlobj = urlopen_with_retry('http://hichannel.hinet.net/radio/channelList.do?pN=%d'%pN)
+            content = urlobj.read()
+            jsonobj = json.loads(content)
+            for obj in jsonobj['list']:
+                if obj[u'isChannel']:
+                    radio_dict[str(obj[u'channel_id'])] = (obj[u'channel_title']).decode('utf8')
+            if pN >= int(jsonobj[u'pageSize']): 
+                break
+            else:
+                pN = pN+1
         return radio_dict
 
     def __init__(self, _id):

@@ -11,6 +11,7 @@ import re
 import subprocess as sp
 import socket
 import time
+import json
 from functools import wraps
 
 def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
@@ -62,12 +63,19 @@ class Pytwradio(object):
     """
     @classmethod
     def get_list(cls):
-        urlobj = urlopen_with_retry('http://hichannel.hinet.net/ajax/radio/xml.do')
-        content = urlobj.read()
-        radiolist = re.findall('listname="([^\"]*)".*md_id="([^\"]*)"', content)
         radio_dict = {}
-        for name, _id in radiolist:
-            radio_dict[_id] = name.decode('utf8')
+        pN = 1
+        while True:
+            urlobj = urlopen_with_retry('http://hichannel.hinet.net/radio/channelList.do?pN=%d'%pN)
+            content = urlobj.read()
+            jsonobj = json.loads(content)
+            for obj in jsonobj['list']:
+                if obj[u'isChannel']:
+                    radio_dict[str(obj[u'channel_id'])] = (obj[u'channel_title']).decode('utf8')
+            if pN >= int(jsonobj[u'pageSize']): 
+                break
+            else:
+                pN = pN+1
         return radio_dict
 
     def __init__(self, _id):
@@ -80,20 +88,18 @@ class Pytwradio(object):
 
     @retry(urllib2.URLError, tries=5, delay=1, backoff=1)
     def auth(self):
-        req = urllib2.Request(url='http://hichannel.hinet.net/player.do?id=%s&type=playradio' %self.id)
-        req.add_header('Referer', 'http://hichannel.hinet.net/radio.do?id=%s' %self.id)
+        req = urllib2.Request(url='http://hichannel.hinet.net/radio/index.do?id={0}'.format(self.id))
         urlobj = urlopen_with_retry(req)
         content = urlobj.read()
-        urls = re.findall("http://radio-hichannel.cdn.hinet.net/live[^\"]*", content)
+        urls = re.findall("http:.*radio-hichannel.cdn.hinet.net[^']*", content)
         if urls:
-            url = urls[0]
+            url = urls[0].replace('\\','')
             self.base_url = re.findall('.*/', url)[0]
             urlobj = urlopen_with_retry(url)
             content = urlobj.read()
             self.auth_url = self.base_url + content.split()[3]
         else:
             raise urllib2.URLError("ID not found or temporary error")
-
 
     def capture_nonblocking(self, t, output_file=None, DEBUG=False):
         fp = None

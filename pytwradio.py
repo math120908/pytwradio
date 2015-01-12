@@ -52,7 +52,7 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
         return f_retry  # true decorator
     return deco_retry
 
-@retry(urllib2.URLError, tries=5, delay=0, backoff=0)
+@retry(urllib2.URLError, tries=5, delay=1, backoff=1)
 def urlopen_with_retry(req):
     return urllib2.urlopen(req)
 

@@ -23,3 +23,11 @@ Record audio with playing video
 ```bash
 $ ./pytwradio.py --id 370 -t -1 --play [-o output.ts]
 ```
+
+## Reference
+
+   * Radio list `http://hichannel.hinet.net/radio/channelList.do?pN={{pageNum}}`
+
+## Version Notes
+
+   * 2015/01/07~2015/01/12 hichannel new interface.

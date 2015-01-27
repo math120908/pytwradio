@@ -105,7 +105,6 @@ class Pytwradio(object):
 
     def __init__(self, _id):
         self.id = str(_id)
-        self.auth()
         self.radio_dict = self.get_list()
         self.base_url = ''
         self.auth_url = ''
@@ -122,7 +121,7 @@ class Pytwradio(object):
             self.base_url = re.findall('.*/', url)[0]
             urlobj = urlopen_with_retry(url)
             content = urlobj.read()
-            self.auth_url = self.base_url + content.split()[3]
+            self.auth_url = self.base_url + content.split()[-1]
         else:
             raise urllib2.URLError("ID not found or temporary error")
 

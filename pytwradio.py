@@ -155,7 +155,10 @@ class Pytwradio(object):
             try:
                 urlobj = urlopen_with_retry(self.auth_url)
                 content = urlobj.read()
-                music_url = self.base_url + content.split('\n')[6]
+                for line in content.split('\n'):
+                    if line[0] != '#':
+                        music_url = self.base_url + line 
+                        break
             except Exception, e:
                 print >>sys.stderr, e
                 print self.auth_url
